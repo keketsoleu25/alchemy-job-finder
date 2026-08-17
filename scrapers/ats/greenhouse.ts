@@ -23,8 +23,52 @@ type GreenhouseResponse = {
   jobs: GreenhouseJob[];
 };
 
-function stripHtml(value: string): string {
-  return value
+const HTML_ENTITIES: Record<string, string> = {
+  amp: "&",
+  apos: "'",
+  gt: ">",
+  lt: "<",
+  mdash: "—",
+  ndash: "–",
+  nbsp: " ",
+  quot: '"',
+};
+
+function decodeHtmlEntitiesOnce(value: string): string {
+  return value.replace(
+    /&(#x?[0-9a-f]+|[a-z]+);/gi,
+    (entity, token: string) => {
+      if (token.startsWith("#x") || token.startsWith("#X")) {
+        const codePoint = Number.parseInt(token.slice(2), 16);
+        return Number.isFinite(codePoint)
+          ? String.fromCodePoint(codePoint)
+          : entity;
+      }
+
+      if (token.startsWith("#")) {
+        const codePoint = Number.parseInt(token.slice(1), 10);
+        return Number.isFinite(codePoint)
+          ? String.fromCodePoint(codePoint)
+          : entity;
+      }
+
+      return HTML_ENTITIES[token.toLowerCase()] ?? entity;
+    }
+  );
+}
+
+export function htmlToPlainText(value: string): string {
+  // Greenhouse content can arrive as normal HTML or as HTML that has itself
+  // been entity-escaped. Decode twice so values such as `&amp;nbsp;` become a
+  // real space before tags are removed. The result stays plain text, so the UI
+  // never needs to render scraped markup with dangerouslySetInnerHTML.
+  const decoded = decodeHtmlEntitiesOnce(
+    decodeHtmlEntitiesOnce(value)
+  );
+
+  return decoded
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
     .replace(/<[^>]*>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -115,7 +159,7 @@ export class GreenhouseScraper
             location
               ?.toLowerCase()
               .includes("remote") ?? false,
-          description: stripHtml(
+          description: htmlToPlainText(
             job.content ?? ""
           ),
           applyUrl: job.absolute_url,
