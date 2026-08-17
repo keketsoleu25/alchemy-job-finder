@@ -42,6 +42,34 @@ export async function setApplicationStatus(formData: FormData) {
   revalidatePath(`/jobs/${jobId}`);
 }
 
+export async function saveApplicationDetails(formData: FormData) {
+  const jobId = String(formData.get("jobId") ?? "");
+  if (!jobId) return;
+
+  const notes = String(formData.get("notes") ?? "").trim();
+  const resumeVersion = String(formData.get("resumeVersion") ?? "").trim();
+  const coverLetterVersion = String(formData.get("coverLetterVersion") ?? "").trim();
+
+  await prisma.jobApplication.upsert({
+    where: { jobId },
+    create: {
+      jobId,
+      status: "PLANNED",
+      notes: notes || null,
+      resumeVersion: resumeVersion || null,
+      coverLetterVersion: coverLetterVersion || null,
+    },
+    update: {
+      notes: notes || null,
+      resumeVersion: resumeVersion || null,
+      coverLetterVersion: coverLetterVersion || null,
+    },
+  });
+
+  revalidatePath("/applications");
+  revalidatePath(`/jobs/${jobId}`);
+}
+
 export async function addCompany(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const slug = String(formData.get("slug") ?? "").trim().toLowerCase();
@@ -76,6 +104,16 @@ export async function addCompany(formData: FormData) {
   });
 
   revalidatePath("/companies");
+}
+
+export async function toggleCompany(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const enabled = String(formData.get("enabled") ?? "") === "true";
+  if (!id) return;
+
+  await prisma.company.update({ where: { id }, data: { enabled } });
+  revalidatePath("/companies");
+  revalidatePath("/");
 }
 
 export async function updateProfile(formData: FormData) {
