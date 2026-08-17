@@ -58,6 +58,7 @@ export function scoreJob(job: MatchJob, profile: MatchProfile): MatchScore {
   const components: Record<string, number> = {};
   const positives: string[] = [];
   const cautions: string[] = [];
+  const experienceMeta = experience.raw ? { experienceText: experience.raw } : {};
 
   if (filter.rejected) {
     return {
@@ -73,18 +74,16 @@ export function scoreJob(job: MatchJob, profile: MatchProfile): MatchScore {
         positives: [],
         cautions: filter.reasons,
         detectedSkills,
-        experienceText: experience.raw,
+        ...experienceMeta,
       },
     };
   }
 
   // Technology match (30): reward overlap with skills actually mentioned by the vacancy.
   // If a description names no technologies, use a neutral score rather than punishing the role.
-  if (detectedSkills.length === 0) {
-    components.technology = 15;
-  } else {
-    components.technology = Math.round(30 * (matchedSkills.length / detectedSkills.length));
-  }
+  components.technology = detectedSkills.length === 0
+    ? 15
+    : Math.round(30 * (matchedSkills.length / detectedSkills.length));
   if (matchedSkills.length) positives.push(`Matched skills: ${matchedSkills.slice(0, 5).join(", ")}`);
   if (missingSkills.length) cautions.push(`Skills to review: ${missingSkills.slice(0, 5).join(", ")}`);
 
@@ -149,7 +148,7 @@ export function scoreJob(job: MatchJob, profile: MatchProfile): MatchScore {
       positives,
       cautions,
       detectedSkills,
-      experienceText: experience.raw,
+      ...experienceMeta,
     },
   };
 }
