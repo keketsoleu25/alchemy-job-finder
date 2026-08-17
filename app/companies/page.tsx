@@ -1,4 +1,4 @@
-import { addCompany } from "@/app/actions";
+import { addCompany, toggleCompany } from "@/app/actions";
 import { prisma } from "@/lib/db/prisma";
 
 export const dynamic = "force-dynamic";
@@ -50,12 +50,19 @@ export default async function CompaniesPage() {
         <div className="section-heading compact"><div><span className="eyebrow">REGISTERED SOURCES</span><h2>Collection health</h2></div></div>
         <div className="company-list">
           {companies.map((company) => (
-            <div className="company-row" key={company.id}>
+            <div className={`company-row ${company.enabled ? "" : "disabled-row"}`} key={company.id}>
               <div className="company-avatar">{company.name.slice(0, 2).toUpperCase()}</div>
               <div className="company-main"><strong>{company.name}</strong><span>{company.scraperType} · {company.atsIdentifier || "career-page data"}</span></div>
               <div><strong>{company._count.jobs}</strong><span>jobs</span></div>
               <div><strong>{company.lastSuccessfulScrapeAt ? company.lastSuccessfulScrapeAt.toLocaleString("en-ZA") : "Never"}</strong><span>last success</span></div>
-              <span className={company.lastError ? "health bad" : "health good"}>{company.lastError ? "Error" : "Healthy"}</span>
+              <div className="company-controls">
+                <span className={company.lastError ? "health bad" : "health good"}>{company.lastError ? "Error" : company.enabled ? "Healthy" : "Paused"}</span>
+                <form action={toggleCompany}>
+                  <input type="hidden" name="id" value={company.id} />
+                  <input type="hidden" name="enabled" value={company.enabled ? "false" : "true"} />
+                  <button className="text-button" type="submit">{company.enabled ? "Pause" : "Enable"}</button>
+                </form>
+              </div>
             </div>
           ))}
           {!companies.length ? <div className="empty-state"><strong>No sources yet.</strong><p>Add your first employer above.</p></div> : null}
