@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Company {
+  id                     String      @id @default(cuid())
+  name                   String
+  slug                   String      @unique
+  careerUrl              String
+  websiteUrl             String?
+  scraperType            ScraperType
+  atsIdentifier          String?
+  enabled                Boolean     @default(true)
+  priority               Int         @default(0)
+  lastScrapedAt          DateTime?
+  lastSuccessfulScrapeAt DateTime?
+  lastError              String?
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+  jobs                   Job[]
+
+  @@index([enabled, priority])
+}
+
+model Job {
+  id                    String          @id @default(cuid())
+  externalId            String?
+  fingerprint           String          @unique
+  companyId             String
+  title                 String
+  normalizedTitle       String
+  location              String?
+  remote                Boolean         @default(false)
+  employmentType        String?
+  description           String
+  applyUrl              String
+  sourceUrl             String
+  source                JobSource
+  requiredExperienceMin Float?
+  requiredExperienceMax Float?
+  matchedSkills         String[]
+  missingSkills         String[]
+  matchScore            Int?
+  matchData             Json?
+  publishedAt           DateTime?
+  firstSeenAt           DateTime        @default(now())
+  lastSeenAt            DateTime        @default(now())
+  status                JobStatus       @default(NEW)
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  company               Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  application           JobApplication?
+
+  @@index([companyId])
+  @@index([status])
+  @@index([matchScore])
+  @@index([publishedAt])
+  @@index([lastSeenAt])
+  @@index([source, externalId])
+}
+
+model JobApplication {
+  id                 String            @id @default(cuid())
+  jobId              String            @unique
+  status             ApplicationStatus @default(PLANNED)
+  appliedAt          DateTime?
+  resumeVersion      String?
+  coverLetterVersion String?
+  notes              String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  job                Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+model CandidateProfile {
+  id                 String           @id @default(cuid())
+  name               String
+  targetRoles        String[]
+  preferredRoles     String[]
+  skills             String[]
+  strongSkills       String[]
+  secondarySkills    String[]
+  yearsExperience    Float            @default(0)
+  preferredLocations String[]
+  remotePreference   RemotePreference @default(FLEXIBLE)
+  education          String?
+  excludedKeywords   String[]
+  preferredKeywords  String[]
+  minimumScore       Int              @default(65)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+}
+
+enum ScraperType {
+  GREENHOUSE
+  LEVER
+  CHEERIO
+  PLAYWRIGHT
+  CUSTOM
+}
+
+enum JobSource {
+  GREENHOUSE
+  LEVER
+  COMPANY_SITE
+}
+
+enum JobStatus {
+  NEW
+  REVIEW
+  SHORTLISTED
+  REJECTED
+  CLOSED
+}
+
+enum ApplicationStatus {
+  PLANNED
+  APPLIED
+  SCREENING
+  ASSESSMENT
+  INTERVIEW
+  OFFER
+  REJECTED
+  WITHDRAWN
+}
+
+enum RemotePreference {
+  REMOTE
+  HYBRID
+  ONSITE
+  FLEXIBLE
+}
