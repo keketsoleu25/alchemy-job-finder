@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Alchemy Job Finder">
+  <defs>
+    <linearGradient id="alchemy" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#d4ff9f"/>
+      <stop offset="1" stop-color="#78c64e"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="#0a0d0c"/>
+  <rect x="5" y="5" width="54" height="54" rx="15" fill="url(#alchemy)"/>
+  <path d="M20.8 46 29.3 18h5.6l8.5 28h-6.2l-1.7-6.3H28.3L26.6 46h-5.8Zm9-11.8H34l-2.1-8.1-2.1 8.1Z" fill="#0a0d0c"/>
+  <circle cx="46.5" cy="17.5" r="3.5" fill="#0a0d0c" opacity=".82"/>
+</svg>
