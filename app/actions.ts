@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db/prisma";
 
 const JOB_STATUSES = ["NEW", "REVIEW", "SHORTLISTED", "REJECTED", "CLOSED"] as const;
 const APPLICATION_STATUSES = ["PLANNED", "APPLIED", "SCREENING", "ASSESSMENT", "INTERVIEW", "OFFER", "REJECTED", "WITHDRAWN"] as const;
+const UI_SCRAPER_TYPES = ["GREENHOUSE", "LEVER", "CUSTOM"] as const;
 
 export async function setJobStatus(formData: FormData) {
   const id = String(formData.get("id") ?? "");
@@ -49,8 +50,10 @@ export async function addCompany(formData: FormData) {
   const scraperType = String(formData.get("scraperType") ?? "GREENHOUSE");
   const atsIdentifier = String(formData.get("atsIdentifier") ?? "").trim();
 
-  if (!name || !slug || !careerUrl || !atsIdentifier || !["GREENHOUSE", "LEVER"].includes(scraperType)) return;
+  if (!name || !slug || !careerUrl || !UI_SCRAPER_TYPES.includes(scraperType as (typeof UI_SCRAPER_TYPES)[number])) return;
+  if (scraperType !== "CUSTOM" && !atsIdentifier) return;
 
+  const typedScraper = scraperType as (typeof UI_SCRAPER_TYPES)[number];
   await prisma.company.upsert({
     where: { slug },
     create: {
@@ -58,16 +61,16 @@ export async function addCompany(formData: FormData) {
       slug,
       careerUrl,
       websiteUrl: websiteUrl || null,
-      scraperType: scraperType as "GREENHOUSE" | "LEVER",
-      atsIdentifier,
+      scraperType: typedScraper,
+      atsIdentifier: atsIdentifier || null,
       enabled: true,
     },
     update: {
       name,
       careerUrl,
       websiteUrl: websiteUrl || null,
-      scraperType: scraperType as "GREENHOUSE" | "LEVER",
-      atsIdentifier,
+      scraperType: typedScraper,
+      atsIdentifier: atsIdentifier || null,
       enabled: true,
     },
   });
