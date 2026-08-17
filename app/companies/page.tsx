@@ -24,14 +24,14 @@ export default async function CompaniesPage() {
         <article className="panel">
           <span className="eyebrow accent">ADD SOURCE</span>
           <h2>Register an employer</h2>
-          <p className="muted">V1 supports direct Greenhouse and Lever boards. Use the ATS board token, not just the company name.</p>
+          <p className="muted">Prefer Greenhouse or Lever. Structured HTML reads public schema.org JobPosting data when a career page exposes it.</p>
           <form action={addCompany} className="form-grid">
             <label><span>Company name</span><input className="field" required name="name" placeholder="Example Co" /></label>
             <label><span>Slug</span><input className="field" required name="slug" placeholder="example-co" /></label>
             <label className="full-span"><span>Career URL</span><input className="field" required name="careerUrl" type="url" placeholder="https://..." /></label>
             <label className="full-span"><span>Website URL</span><input className="field" name="websiteUrl" type="url" placeholder="https://..." /></label>
-            <label><span>ATS</span><select className="field" name="scraperType"><option value="GREENHOUSE">Greenhouse</option><option value="LEVER">Lever</option></select></label>
-            <label><span>Board token</span><input className="field" required name="atsIdentifier" placeholder="company-token" /></label>
+            <label><span>Source type</span><select className="field" name="scraperType"><option value="GREENHOUSE">Greenhouse</option><option value="LEVER">Lever</option><option value="CUSTOM">Structured HTML</option></select></label>
+            <label><span>Board token</span><input className="field" name="atsIdentifier" placeholder="Not needed for structured HTML" /></label>
             <button className="button primary full-span" type="submit">Save source</button>
           </form>
         </article>
@@ -52,7 +52,7 @@ export default async function CompaniesPage() {
           {companies.map((company) => (
             <div className="company-row" key={company.id}>
               <div className="company-avatar">{company.name.slice(0, 2).toUpperCase()}</div>
-              <div className="company-main"><strong>{company.name}</strong><span>{company.scraperType} · {company.atsIdentifier || "No token"}</span></div>
+              <div className="company-main"><strong>{company.name}</strong><span>{company.scraperType} · {company.atsIdentifier || "career-page data"}</span></div>
               <div><strong>{company._count.jobs}</strong><span>jobs</span></div>
               <div><strong>{company.lastSuccessfulScrapeAt ? company.lastSuccessfulScrapeAt.toLocaleString("en-ZA") : "Never"}</strong><span>last success</span></div>
               <span className={company.lastError ? "health bad" : "health good"}>{company.lastError ? "Error" : "Healthy"}</span>
