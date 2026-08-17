@@ -16,34 +16,46 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
   const status = getParam(search, "status");
   const source = getParam(search, "source");
   const remote = getParam(search, "remote");
+  const skill = getParam(search, "skill").trim();
+  const companyId = getParam(search, "companyId");
+  const days = Number(getParam(search, "days") || 0);
   const minScore = Number(getParam(search, "minScore") || 0);
   const sort = getParam(search, "sort") || "match";
+  const discoveredAfter = Number.isFinite(days) && days > 0
+    ? new Date(Date.now() - days * 86_400_000)
+    : undefined;
 
-  const jobs = await prisma.job.findMany({
-    where: {
-      ...(q
-        ? {
-            OR: [
-              { title: { contains: q, mode: "insensitive" } },
-              { company: { name: { contains: q, mode: "insensitive" } } },
-              { location: { contains: q, mode: "insensitive" } },
-            ],
-          }
-        : {}),
-      ...(status ? { status: status as "NEW" | "REVIEW" | "SHORTLISTED" | "REJECTED" | "CLOSED" } : {}),
-      ...(source ? { source: source as "GREENHOUSE" | "LEVER" | "COMPANY_SITE" } : {}),
-      ...(remote === "yes" ? { remote: true } : {}),
-      ...(Number.isFinite(minScore) && minScore > 0 ? { matchScore: { gte: minScore } } : {}),
-    },
-    include: { company: { select: { name: true } }, application: { select: { status: true } } },
-    orderBy:
-      sort === "newest"
-        ? [{ firstSeenAt: "desc" }]
-        : sort === "company"
-          ? [{ company: { name: "asc" } }, { matchScore: "desc" }]
-          : [{ matchScore: { sort: "desc", nulls: "last" } }, { firstSeenAt: "desc" }],
-    take: 250,
-  });
+  const [companies, jobs] = await Promise.all([
+    prisma.company.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.job.findMany({
+      where: {
+        ...(q
+          ? {
+              OR: [
+                { title: { contains: q, mode: "insensitive" } },
+                { company: { name: { contains: q, mode: "insensitive" } } },
+                { location: { contains: q, mode: "insensitive" } },
+              ],
+            }
+          : {}),
+        ...(status ? { status: status as "NEW" | "REVIEW" | "SHORTLISTED" | "REJECTED" | "CLOSED" } : {}),
+        ...(source ? { source: source as "GREENHOUSE" | "LEVER" | "COMPANY_SITE" } : {}),
+        ...(remote === "yes" ? { remote: true } : {}),
+        ...(companyId ? { companyId } : {}),
+        ...(skill ? { matchedSkills: { has: skill } } : {}),
+        ...(discoveredAfter ? { firstSeenAt: { gte: discoveredAfter } } : {}),
+        ...(Number.isFinite(minScore) && minScore > 0 ? { matchScore: { gte: minScore } } : {}),
+      },
+      include: { company: { select: { name: true } }, application: { select: { status: true } } },
+      orderBy:
+        sort === "newest"
+          ? [{ firstSeenAt: "desc" }]
+          : sort === "company"
+            ? [{ company: { name: "asc" } }, { matchScore: "desc" }]
+            : [{ matchScore: { sort: "desc", nulls: "last" } }, { firstSeenAt: "desc" }],
+      take: 250,
+    }),
+  ]);
 
   return (
     <div className="stack-xl">
@@ -58,6 +70,11 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
 
       <form className="filter-bar" action="/jobs">
         <input className="field grow" name="q" defaultValue={q} placeholder="Search role, company or location" />
+        <input className="field" name="skill" defaultValue={skill} placeholder="Matched skill" />
+        <select className="field" name="companyId" defaultValue={companyId}>
+          <option value="">All companies</option>
+          {companies.map((company) => <option value={company.id} key={company.id}>{company.name}</option>)}
+        </select>
         <select className="field" name="status" defaultValue={status}>
           <option value="">All statuses</option>
           <option value="NEW">New</option>
@@ -76,6 +93,12 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
           <option value="">Any workplace</option>
           <option value="yes">Remote-friendly</option>
         </select>
+        <select className="field" name="days" defaultValue={String(days || "")}>
+          <option value="">Any discovery date</option>
+          <option value="1">Found today</option>
+          <option value="7">Last 7 days</option>
+          <option value="30">Last 30 days</option>
+        </select>
         <select className="field" name="minScore" defaultValue={String(minScore || "")}>
           <option value="">Any score</option>
           <option value="65">65%+</option>
@@ -88,6 +111,7 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
           <option value="company">Company</option>
         </select>
         <button className="button primary" type="submit">Filter</button>
+        <Link className="button ghost" href="/jobs">Clear</Link>
       </form>
 
       <div className="table-shell">
