@@ -45,7 +45,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="live-chip"><span /> Collection engine ready</div>
         </header>
+
         <main className="page-wrap">{children}</main>
+
+        <footer className="app-footer">
+          <div className="footer-brand">
+            <span className="footer-mark" aria-hidden="true">A</span>
+            <div>
+              <strong>Alchemy Job Finder</strong>
+              <span>Direct-job intelligence, built for intentional applications.</span>
+            </div>
+          </div>
+
+          <div className="footer-meta">
+            <span>Built by The Tech Alchemy Lab</span>
+            <span aria-hidden="true">·</span>
+            <span>© {new Date().getFullYear()}</span>
+          </div>
+        </footer>
       </div>
     </div>
   );
