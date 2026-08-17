@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
-import { setApplicationStatus, setJobStatus } from "@/app/actions";
+import { saveApplicationDetails, setApplicationStatus, setJobStatus } from "@/app/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -128,6 +128,18 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
                 </form>
               ))}
             </div>
+          </article>
+
+          <article className="panel">
+            <span className="eyebrow">APPLICATION NOTES</span>
+            <h2>Keep the context</h2>
+            <form action={saveApplicationDetails} className="stack-sm">
+              <input type="hidden" name="jobId" value={job.id} />
+              <label className="form-label"><span>Resume version</span><input className="field" name="resumeVersion" defaultValue={job.application?.resumeVersion ?? ""} placeholder="e.g. frontend-v3" /></label>
+              <label className="form-label"><span>Cover letter version</span><input className="field" name="coverLetterVersion" defaultValue={job.application?.coverLetterVersion ?? ""} placeholder="e.g. figma-tailored" /></label>
+              <label className="form-label"><span>Notes</span><textarea className="field textarea" name="notes" defaultValue={job.application?.notes ?? ""} placeholder="Recruiter, follow-up, assessment notes..." /></label>
+              <button className="button ghost full" type="submit">Save application notes</button>
+            </form>
           </article>
 
           <article className="panel metadata-list">
