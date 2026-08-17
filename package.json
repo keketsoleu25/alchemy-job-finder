@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
     "scrape": "tsx workers/scrape-jobs.ts",
     "score": "tsx scripts/score-jobs.ts",
     "refresh": "npm run scrape && npm run score",
