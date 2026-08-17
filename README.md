@@ -2,12 +2,13 @@
 
 Alchemy Job Finder is a personal job-intelligence platform that turns direct employer vacancies into an actionable shortlist.
 
-It collects jobs from supported ATS sources, normalizes and deduplicates them, scores each role against a configurable candidate profile, and tracks applications from planning through interview and offer.
+It collects jobs from supported ATS sources and public structured career pages, normalizes and deduplicates them, scores each role against a configurable candidate profile, and tracks applications from planning through interview and offer.
 
 ## V1 capabilities
 
 - Direct Greenhouse Job Board collection
 - Direct Lever Postings collection
+- Dependency-free schema.org `JobPosting` career-page fallback
 - Zod validation at scraper boundaries
 - Stable fingerprint-based deduplication
 - Controlled database write concurrency
@@ -19,9 +20,11 @@ It collects jobs from supported ATS sources, normalizes and deduplicates them, s
 - Ranked **Apply Today** dashboard
 - Filterable job explorer and job-detail review view
 - Shortlist and application-stage tracking
-- Company/source management
+- Application notes + resume/cover-letter version references
+- Company/source management with enable/disable controls
 - Candidate profile settings
 - Market, skill-gap and application-funnel analytics
+- Scheduled refresh workflow
 
 ## Stack
 
@@ -87,7 +90,7 @@ npm test                # deterministic matcher tests
 ```text
 Company registry
   → scraper registry
-  → Greenhouse / Lever
+  → Greenhouse / Lever / structured HTML
   → Zod validation
   → normalization + fingerprint
   → Neon PostgreSQL
@@ -110,16 +113,26 @@ Hard filters are separate and intentionally conservative. Scoring data is stored
 
 ## Responsible scraping
 
-Alchemy prefers public ATS endpoints over browser automation. The current adapters do not bypass authentication, CAPTCHAs, rate limits or anti-bot controls. External-source failures are isolated so one employer cannot terminate a full collection run.
+Alchemy prefers public ATS endpoints over HTML scraping. The structured HTML fallback only reads public schema.org `JobPosting` JSON-LD from a supplied career page; it does not execute JavaScript or bypass access controls. External-source failures are isolated so one employer cannot terminate a full collection run.
 
 ## Adding an employer
 
-The UI currently exposes the supported V1 adapters: **Greenhouse** and **Lever**. Add the employer under **Companies**, supply the real ATS board token, then run `npm run refresh`.
+Use **Companies** in the UI:
 
-## Deployment notes
+- **Greenhouse** — supply the real board token.
+- **Lever** — supply the real postings token.
+- **Structured HTML** — no token required; the page must expose schema.org `JobPosting` JSON-LD.
 
-Set `DATABASE_URL` in the deployment environment. Scheduled refresh is provided through GitHub Actions and requires a repository secret named `DATABASE_URL`.
+Then run `npm run refresh`.
 
-## Next adapter work
+## Job lifecycle
 
-Static-HTML/Cheerio and Playwright fallback remain intentionally outside the critical V1 path. Add them only for target employers that cannot be reached through a public ATS endpoint; Playwright should remain the last resort.
+Every successful sighting refreshes `lastSeenAt`. A vacancy is only marked `CLOSED` after a successful source scrape and a 72-hour grace period. If a closed vacancy reappears, it returns to `NEW`; user decisions such as `SHORTLISTED` and `REJECTED` are never reset by an ordinary refresh.
+
+## Deployment and scheduling
+
+Set `DATABASE_URL` in the deployment environment. The scheduled GitHub Actions workflow runs at 04:00, 10:00 and 16:00 UTC (06:00, 12:00 and 18:00 South Africa time) and requires a repository secret named `DATABASE_URL`. If the secret is absent, the workflow exits safely without scraping.
+
+## Intentional V1 boundary
+
+Playwright remains a last-resort adapter for career sites that require JavaScript execution. It is intentionally not activated until a real target employer proves the lighter API/structured-data paths are insufficient. No CAPTCHA bypass, proxy rotation, fingerprint spoofing or mass-application automation is part of this project.
