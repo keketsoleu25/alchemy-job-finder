@@ -40,7 +40,8 @@ async function main() {
             missingSkills: result.missingSkills,
             requiredExperienceMin: result.requiredExperienceMin ?? null,
             requiredExperienceMax: result.requiredExperienceMax ?? null,
-            matchData: result.data,
+            // JSON round-tripping strips undefined values before Prisma validates InputJsonValue.
+            matchData: JSON.parse(JSON.stringify(result.data)),
           },
         });
       })
