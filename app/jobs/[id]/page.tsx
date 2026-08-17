@@ -22,7 +22,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
   });
   if (!job) notFound();
 
-  const match = (job.matchData ?? {}) as MatchData;
+  const match = (job.matchData ?? {}) as unknown as MatchData;
 
   return (
     <div className="stack-xl">
