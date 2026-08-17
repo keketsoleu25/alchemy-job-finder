@@ -1,0 +1,11 @@
+.company-controls { display: flex !important; align-items: center; justify-content: flex-end; gap: 9px; }
+.text-button { border: 0; background: transparent; color: var(--muted); padding: 3px 0; font-size: 10px; font-weight: 700; }
+.text-button:hover { color: var(--accent); }
+.disabled-row { opacity: .52; }
+.disabled-row:hover { opacity: .78; }
+.archive-list .source-row { color: inherit; }
+.form-label textarea { width: 100%; }
+
+@media (max-width: 860px) {
+  .company-controls { display: flex !important; grid-column: 2 / -1; justify-content: flex-start; }
+}
