@@ -58,7 +58,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="footer-meta">
-            <span>Built by The Tech Alchemy Lab</span>
+            <a
+              href="https://the-tech-alchemy-lab.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Built by The Tech Alchemy Lab
+            </a>
             <span aria-hidden="true">·</span>
             <span>© {new Date().getFullYear()}</span>
           </div>
