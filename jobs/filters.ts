@@ -63,8 +63,14 @@ const GEO_RESTRICTIONS: GeoRestriction[] = [
 
 function profileAllowsLocation(profile: FilterProfile, restriction: GeoRestriction): boolean {
   const preferences = profile.preferredLocations.map((value) => value.trim().toLowerCase());
+
   return restriction.acceptedLocationTerms.some((term) =>
-    preferences.some((preference) => preference === term || preference.includes(term))
+    preferences.some((preference) => {
+      // Short country aliases such as `US` and `UK` must match a full preference,
+      // otherwise `us` could accidentally match an unrelated place name.
+      if (term.length < 4) return preference === term;
+      return preference === term || preference.includes(term);
+    })
   );
 }
 
