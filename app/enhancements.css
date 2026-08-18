@@ -6,6 +6,16 @@
 .archive-list .source-row { color: inherit; }
 .form-label textarea { width: 100%; }
 
+/* Keyboard users should get the same clear interaction signal as pointer users. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
 .app-footer {
   width: min(1480px, 100%);
   margin: 0 auto;
@@ -40,4 +50,23 @@
   .company-controls { display: flex !important; grid-column: 2 / -1; justify-content: flex-start; }
   .app-footer { padding: 22px 20px 28px; align-items: flex-start; flex-direction: column; }
   .footer-meta { justify-content: flex-start; }
+  .nav { scrollbar-width: none; overscroll-behavior-inline: contain; }
+  .nav::-webkit-scrollbar { display: none; }
+  .hero-actions { width: 100%; }
+  .hero-actions .button { flex: 1 1 150px; }
+  .detail-actions { align-items: stretch; }
+}
+
+@media (max-width: 560px) {
+  .job-card { padding: 17px; }
+  .job-card-top { gap: 12px; }
+  .job-card h3 { font-size: 17px; }
+  .job-actions { align-items: stretch; }
+  .job-actions > a,
+  .job-actions > form { flex: 1 1 130px; }
+  .job-actions form .button { width: 100%; }
+  .detail-actions > a,
+  .detail-actions > form { flex: 1 1 100%; }
+  .detail-actions form .button { width: 100%; }
+  .app-footer { padding-inline: 18px; }
 }
