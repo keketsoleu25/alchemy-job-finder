@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { setJobStatus } from "@/app/actions";
+import { sastCalendarDayDifference } from "@/lib/time";
 
 type JobCardProps = {
   job: {
@@ -15,19 +16,10 @@ type JobCardProps = {
   };
 };
 
-function startOfLocalDay(date: Date): number {
-  const copy = new Date(date);
-  copy.setHours(0, 0, 0, 0);
-  return copy.getTime();
-}
-
 function ageLabel(date: Date): string {
-  // Use calendar-day boundaries, matching the dashboard's "Discovered today"
-  // metric. A simple elapsed-24-hours calculation can call a job "Today"
-  // after midnight even though it belongs to yesterday's discovery count.
-  const today = startOfLocalDay(new Date());
-  const discovered = startOfLocalDay(date);
-  const days = Math.max(0, Math.round((today - discovered) / 86_400_000));
+  // Use the exact same SAST calendar boundary as the dashboard's
+  // "Discovered today" metric so labels and counts cannot disagree.
+  const days = sastCalendarDayDifference(date);
 
   if (days === 0) return "Today";
   if (days === 1) return "Yesterday";
