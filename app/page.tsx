@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db/prisma";
+import { startOfSastDayUtc } from "@/lib/time";
 import { JobCard } from "@/components/job-card";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
+  const startOfToday = startOfSastDayUtc();
   const startOfWeek = new Date();
   startOfWeek.setDate(startOfWeek.getDate() - 7);
 
