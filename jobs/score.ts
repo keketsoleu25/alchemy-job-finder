@@ -42,7 +42,8 @@ export type MatchScore = {
 };
 
 function includesPhrase(text: string, phrase: string): boolean {
-  return text.toLowerCase().includes(phrase.trim().toLowerCase());
+  const normalized = phrase.trim().toLowerCase();
+  return Boolean(normalized) && text.toLowerCase().includes(normalized);
 }
 
 export function scoreJob(job: MatchJob, profile: MatchProfile): MatchScore {
@@ -79,37 +80,47 @@ export function scoreJob(job: MatchJob, profile: MatchProfile): MatchScore {
     };
   }
 
-  // Technology match (30): reward overlap with skills actually mentioned by the vacancy.
-  // If a description names no technologies, use a neutral score rather than punishing the role.
+  // Technology match (30): missing technologies must visibly reduce the score.
+  // Earlier V1 data under-detected C++/Rust/Go/WebAssembly, which made specialised
+  // roles look artificially perfect. The expanded skill dictionary fixes that at source.
   components.technology = detectedSkills.length === 0
     ? 15
     : Math.round(30 * (matchedSkills.length / detectedSkills.length));
   if (matchedSkills.length) positives.push(`Matched skills: ${matchedSkills.slice(0, 5).join(", ")}`);
   if (missingSkills.length) cautions.push(`Skills to review: ${missingSkills.slice(0, 5).join(", ")}`);
 
-  // Role/title match (20): exact target phrases are strongest, preferred keywords add partial credit.
-  const targetMatch = [...profile.targetRoles, ...profile.preferredRoles].some((role) => includesPhrase(job.title, role));
+  // Role/title match (20): title alignment matters, but it cannot compensate for
+  // geography, experience or a weak technology fit on its own.
+  const targetMatch = [...profile.targetRoles, ...profile.preferredRoles]
+    .filter(Boolean)
+    .some((role) => includesPhrase(job.title, role));
   const preferredHits = profile.preferredKeywords.filter((keyword) => includesPhrase(fullText, keyword)).length;
   components.role = targetMatch ? 20 : Math.min(15, preferredHits * 3);
   if (targetMatch) positives.push("Role title matches a target role");
 
-  // Experience match (15): allow a small stretch instead of hard-rejecting ambitious roles.
+  // Experience match (15): one year above profile is a reasonable stretch; two
+  // years is a material gap; anything larger should not remain a top-ranked role.
   if (experience.min == null) {
-    components.experience = 12;
+    components.experience = 10;
   } else if (experience.min <= profile.yearsExperience + 1) {
     components.experience = 15;
     positives.push("Experience requirement is within range");
   } else if (experience.min <= profile.yearsExperience + 2) {
-    components.experience = 8;
+    components.experience = 6;
     cautions.push(`Stretch role: asks for about ${experience.min} years`);
   } else {
-    components.experience = 2;
+    components.experience = 0;
     cautions.push(`Experience gap: asks for about ${experience.min} years`);
   }
 
-  // Location/remote match (15).
+  // Location/remote match (15). FLEXIBLE means flexible about work mode, not
+  // willing/eligible to work in every country. A non-preferred location therefore
+  // gets only small credit instead of the old near-neutral 9/15.
   const location = job.location?.toLowerCase() ?? "";
-  const preferredLocation = profile.preferredLocations.some((value) => location.includes(value.toLowerCase()));
+  const preferredLocation = profile.preferredLocations.some((value) => {
+    const preference = value.trim().toLowerCase();
+    return Boolean(preference) && location.includes(preference);
+  });
   const remotePreferred = profile.remotePreference === "REMOTE" || profile.remotePreference === "FLEXIBLE";
   if (job.remote && remotePreferred) {
     components.location = 15;
@@ -117,11 +128,9 @@ export function scoreJob(job: MatchJob, profile: MatchProfile): MatchScore {
   } else if (preferredLocation) {
     components.location = 15;
     positives.push("Location matches preference");
-  } else if (profile.remotePreference === "FLEXIBLE") {
-    components.location = 9;
   } else {
-    components.location = 4;
-    cautions.push("Location may need review");
+    components.location = 3;
+    cautions.push("Location is outside current preferences");
   }
 
   // Education compatibility (10): only penalize when the copy explicitly frames a degree as mandatory.
@@ -129,11 +138,28 @@ export function scoreJob(job: MatchJob, profile: MatchProfile): MatchScore {
   components.education = mandatoryDegree && !profile.education ? 2 : 10;
   if (mandatoryDegree && !profile.education) cautions.push("Mandatory degree language detected");
 
-  // Direct source (10): all current adapters point to the employer/ATS application flow.
+  // Direct source (10): current adapters point to employer/ATS application flows.
   components.direct = 10;
   positives.push("Direct application source");
 
-  const score = Math.max(0, Math.min(100, Object.values(components).reduce((sum, value) => sum + value, 0)));
+  let score = Object.values(components).reduce((sum, value) => sum + value, 0);
+
+  // Confidence caps prevent one strong dimension from masking a material gap.
+  // These are deterministic guardrails, not hard rejections; users can still inspect
+  // the role, but it will not crowd out more actionable opportunities in Apply Today.
+  if (experience.min != null && experience.min > profile.yearsExperience + 2) {
+    score = Math.min(score, 64);
+  } else if (experience.min != null && experience.min > profile.yearsExperience + 1) {
+    score = Math.min(score, 79);
+  }
+  if (detectedSkills.length >= 3 && missingSkills.length > matchedSkills.length) {
+    score = Math.min(score, 69);
+  }
+  if (!job.remote && !preferredLocation) {
+    score = Math.min(score, 74);
+  }
+
+  score = Math.max(0, Math.min(100, score));
 
   return {
     score,

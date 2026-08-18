@@ -3,21 +3,35 @@ import { prisma } from "@/lib/db/prisma";
 export const dynamic = "force-dynamic";
 
 export default async function AnalyticsPage() {
-  const [jobs, applications] = await Promise.all([
+  const [jobs, applications, profile] = await Promise.all([
     prisma.job.findMany({
       where: { status: { not: "CLOSED" } },
       select: { matchedSkills: true, missingSkills: true, remote: true, matchScore: true, company: { select: { name: true } } },
     }),
     prisma.jobApplication.findMany({ select: { status: true } }),
+    prisma.candidateProfile.findFirst({ orderBy: { createdAt: "asc" }, select: { minimumScore: true } }),
   ]);
 
+  const threshold = profile?.minimumScore ?? 65;
+  const gapFloor = Math.max(40, threshold - 10);
   const skillCounts = new Map<string, number>();
   const gapCounts = new Map<string, number>();
   const companyCounts = new Map<string, number>();
 
   for (const job of jobs) {
-    for (const skill of [...job.matchedSkills, ...job.missingSkills]) skillCounts.set(skill, (skillCounts.get(skill) ?? 0) + 1);
-    for (const skill of job.missingSkills) gapCounts.set(skill, (gapCounts.get(skill) ?? 0) + 1);
+    for (const skill of [...job.matchedSkills, ...job.missingSkills]) {
+      skillCounts.set(skill, (skillCounts.get(skill) ?? 0) + 1);
+    }
+
+    // Skill-gap advice is useful only when the vacancy is at least plausibly
+    // actionable. Do not tell the user to learn technology demanded mainly by
+    // jobs that scoring already considers a poor fit.
+    if ((job.matchScore ?? 0) >= gapFloor) {
+      for (const skill of job.missingSkills) {
+        gapCounts.set(skill, (gapCounts.get(skill) ?? 0) + 1);
+      }
+    }
+
     companyCounts.set(job.company.name, (companyCounts.get(job.company.name) ?? 0) + 1);
   }
 
@@ -26,7 +40,7 @@ export default async function AnalyticsPage() {
   const skillGaps = top(gapCounts);
   const activeCompanies = top(companyCounts, 6);
   const remoteCount = jobs.filter((job) => job.remote).length;
-  const strongCount = jobs.filter((job) => (job.matchScore ?? 0) >= 65).length;
+  const strongCount = jobs.filter((job) => (job.matchScore ?? 0) >= threshold).length;
   const funnel = ["APPLIED", "SCREENING", "ASSESSMENT", "INTERVIEW", "OFFER"].map((status) => [status, applications.filter((item) => item.status === status).length] as const);
   const maxSkill = Math.max(1, ...topSkills.map(([, count]) => count));
   const maxGap = Math.max(1, ...skillGaps.map(([, count]) => count));
@@ -43,7 +57,7 @@ export default async function AnalyticsPage() {
 
       <section className="metric-grid">
         <Metric label="Open jobs" value={jobs.length} suffix="" />
-        <Metric label="Strong matches" value={strongCount} suffix="" />
+        <Metric label="Strong matches" value={strongCount} suffix="" hint={`Score ≥ ${threshold}%`} />
         <Metric label="Remote-friendly" value={jobs.length ? Math.round((remoteCount / jobs.length) * 100) : 0} suffix="%" />
         <Metric label="Applications tracked" value={applications.length} suffix="" />
       </section>
@@ -62,10 +76,10 @@ export default async function AnalyticsPage() {
         <article className="panel">
           <span className="eyebrow">SKILL GAP</span>
           <h2>What appears outside your profile</h2>
-          <p className="muted">Use this to decide what is worth learning next.</p>
+          <p className="muted">Based on roles scoring at least {gapFloor}%, so the learning signal stays relevant.</p>
           <div className="bar-list">
             {skillGaps.map(([skill, count]) => <Bar key={skill} label={skill} count={count} max={maxGap} />)}
-            {!skillGaps.length ? <p className="muted">No gap data yet.</p> : null}
+            {!skillGaps.length ? <p className="muted">No relevant gap data yet.</p> : null}
           </div>
         </article>
       </section>
@@ -97,8 +111,8 @@ export default async function AnalyticsPage() {
   );
 }
 
-function Metric({ label, value, suffix }: { label: string; value: number; suffix: string }) {
-  return <article className="metric-card"><span>{label}</span><strong>{value}{suffix}</strong><small>Current dataset</small></article>;
+function Metric({ label, value, suffix, hint = "Current dataset" }: { label: string; value: number; suffix: string; hint?: string }) {
+  return <article className="metric-card"><span>{label}</span><strong>{value}{suffix}</strong><small>{hint}</small></article>;
 }
 
 function Bar({ label, count, max }: { label: string; count: number; max: number }) {

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { setJobStatus } from "@/app/actions";
+import { sastCalendarDayDifference } from "@/lib/time";
 
 type JobCardProps = {
   job: {
@@ -16,9 +17,12 @@ type JobCardProps = {
 };
 
 function ageLabel(date: Date): string {
-  const days = Math.max(0, Math.floor((Date.now() - date.getTime()) / 86_400_000));
+  // Use the exact same SAST calendar boundary as the dashboard's
+  // "Discovered today" metric so labels and counts cannot disagree.
+  const days = sastCalendarDayDifference(date);
+
   if (days === 0) return "Today";
-  if (days === 1) return "1 day ago";
+  if (days === 1) return "Yesterday";
   return `${days} days ago`;
 }
 
