@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db/prisma";
 const JOB_STATUSES = ["NEW", "REVIEW", "SHORTLISTED", "REJECTED", "CLOSED"] as const;
 const APPLICATION_STATUSES = ["PLANNED", "APPLIED", "SCREENING", "ASSESSMENT", "INTERVIEW", "OFFER", "REJECTED", "WITHDRAWN"] as const;
 const UI_SCRAPER_TYPES = ["GREENHOUSE", "LEVER", "CUSTOM"] as const;
+const APPLIED_OR_LATER = new Set(["APPLIED", "SCREENING", "ASSESSMENT", "INTERVIEW", "OFFER", "REJECTED"] as const);
 
 export async function setJobStatus(formData: FormData) {
   const id = String(formData.get("id") ?? "");
@@ -24,16 +25,23 @@ export async function setApplicationStatus(formData: FormData) {
   if (!jobId || !APPLICATION_STATUSES.includes(status as (typeof APPLICATION_STATUSES)[number])) return;
 
   const typedStatus = status as (typeof APPLICATION_STATUSES)[number];
+  const existing = await prisma.jobApplication.findUnique({ where: { jobId }, select: { appliedAt: true } });
+  const shouldHaveAppliedDate = APPLIED_OR_LATER.has(typedStatus as (typeof APPLIED_OR_LATER extends Set<infer T> ? T : never));
+  const appliedAt = shouldHaveAppliedDate ? existing?.appliedAt ?? new Date() : existing?.appliedAt ?? null;
+
+  // `appliedAt` represents when the opportunity entered the real application
+  // funnel. If the user jumps directly to Screening/Interview, keep analytics
+  // accurate by assigning the date once and never resetting it on later moves.
   await prisma.jobApplication.upsert({
     where: { jobId },
     create: {
       jobId,
       status: typedStatus,
-      appliedAt: typedStatus === "APPLIED" ? new Date() : null,
+      appliedAt,
     },
     update: {
       status: typedStatus,
-      ...(typedStatus === "APPLIED" ? { appliedAt: new Date() } : {}),
+      appliedAt,
     },
   });
 
