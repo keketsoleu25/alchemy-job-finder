@@ -23,9 +23,9 @@ export default async function SettingsPage() {
     <div className="stack-xl">
       <section className="page-heading">
         <div>
-          <span className="eyebrow accent">MATCH PROFILE</span>
-          <h1>Teach Alchemy what a good opportunity looks like.</h1>
-          <p>These values drive deterministic scoring. Change the profile, then run scoring again.</p>
+          <span className="eyebrow accent">🇿🇦 SA INTELLIGENCE · PROFILE</span>
+          <h1>Teach Alchemy what a good South African opportunity looks like.</h1>
+          <p>v0.2 uses this profile for SA-aware normalization, eligibility analysis, matching and the Apply / Maybe / Skip verdict.</p>
         </div>
         <span className="count-chip">Minimum {profile.minimumScore}%</span>
       </section>
@@ -33,9 +33,9 @@ export default async function SettingsPage() {
       <form action={updateProfile} className="settings-grid">
         <article className="panel stack-lg">
           <div><span className="eyebrow">ROLE TARGET</span><h2>What are you looking for?</h2></div>
-          <Field label="Target roles" name="targetRoles" defaultValue={join(profile.targetRoles)} hint="Comma-separated role titles" />
+          <Field label="Target roles" name="targetRoles" defaultValue={join(profile.targetRoles)} hint="Include SA variants such as Software Developer, Graduate Developer, Junior Software Engineer and Application Developer." />
           <Field label="Preferred roles" name="preferredRoles" defaultValue={join(profile.preferredRoles)} />
-          <Field label="Preferred keywords" name="preferredKeywords" defaultValue={join(profile.preferredKeywords)} />
+          <Field label="Preferred keywords" name="preferredKeywords" defaultValue={join(profile.preferredKeywords)} hint="Useful terms: graduate, junior, associate, trainee, internship, learnership, React, TypeScript, C#, Java." />
           <Field label="Excluded title keywords" name="excludedKeywords" defaultValue={join(profile.excludedKeywords)} />
         </article>
 
@@ -45,22 +45,22 @@ export default async function SettingsPage() {
           <Field label="Strong skills" name="strongSkills" defaultValue={join(profile.strongSkills)} />
           <Field label="Secondary skills" name="secondarySkills" defaultValue={join(profile.secondarySkills)} />
           <label className="form-label"><span>Years of experience</span><input className="field" type="number" min="0" step="0.5" name="yearsExperience" defaultValue={profile.yearsExperience} /></label>
-          <label className="form-label"><span>Education summary</span><textarea className="field textarea" name="education" defaultValue={profile.education ?? ""} /></label>
+          <label className="form-label"><span>Education summary</span><textarea className="field textarea" name="education" defaultValue={profile.education ?? ""} /><small>Describe completed study, incomplete degree study, bootcamps and relevant training accurately. Alchemy uses this to avoid treating every degree mention as an automatic rejection.</small></label>
         </article>
 
         <article className="panel stack-lg">
-          <div><span className="eyebrow">WORKPLACE</span><h2>Location preferences</h2></div>
-          <Field label="Preferred locations" name="preferredLocations" defaultValue={join(profile.preferredLocations)} />
+          <div><span className="eyebrow">SOUTH AFRICA</span><h2>Location preferences</h2></div>
+          <Field label="Preferred locations" name="preferredLocations" defaultValue={join(profile.preferredLocations)} hint="Examples: South Africa, Gauteng, Johannesburg, Pretoria, Western Cape, Cape Town, Remote SA." />
           <label className="form-label"><span>Remote preference</span><select className="field" name="remotePreference" defaultValue={profile.remotePreference}><option value="FLEXIBLE">Flexible</option><option value="REMOTE">Remote</option><option value="HYBRID">Hybrid</option><option value="ONSITE">On-site</option></select></label>
           <label className="form-label"><span>Strong-match threshold</span><input className="field" type="number" min="0" max="100" name="minimumScore" defaultValue={profile.minimumScore} /></label>
         </article>
 
         <article className="panel focus-panel stack-lg">
-          <span className="eyebrow accent">HOW SCORING WORKS</span>
+          <span className="eyebrow accent">V0.2 MATCHING PIPELINE</span>
           <h2>Explainable by design.</h2>
-          <p>Alchemy scores technology overlap, role fit, experience, location, education language and direct-application quality. Hard filters are deliberately conservative.</p>
-          <div className="command-card"><span>Apply changes to stored jobs</span><code>npm run score</code></div>
-          <button className="button primary" type="submit">Save matching profile</button>
+          <p>Alchemy now normalizes South African location, work mode, career level, qualification language and common ZAR salary formats before separating hard requirements from learnable gaps.</p>
+          <div className="command-card"><span>Re-run analysis on stored jobs</span><code>npm run score</code></div>
+          <button className="button primary" type="submit">Save SA matching profile</button>
         </article>
       </form>
     </div>
