@@ -37,7 +37,6 @@ const PROVINCES: Array<{ name: string; aliases: string[] }> = [
 
 const SA_MARKERS = [
   "south africa",
-  "za",
   "gauteng",
   "western cape",
   "kwazulu",
@@ -101,7 +100,7 @@ function normalizeMonthlySalary(text: string): SANormalizedJob["salary"] {
 
 export function normalizeSAJob(job: { title: string; description: string; location?: string | null; remote: boolean }): SANormalizedJob {
   const text = `${job.title} ${job.description} ${job.location ?? ""}`.toLowerCase();
-  const country = SA_MARKERS.some((marker) => text.includes(marker)) ? "ZA" : "UNKNOWN";
+  const country = SA_MARKERS.some((marker) => text.includes(marker)) || /(?:,|\(|\s)za(?:\)|,|\s|$)/i.test(text) ? "ZA" : "UNKNOWN";
   const province = findProvince(text);
   const city = findCity(text);
 
