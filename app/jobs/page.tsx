@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db/prisma";
+import { discoveredSinceDays } from "@/lib/discovered-since";
 
 export const dynamic = "force-dynamic";
 
@@ -21,23 +22,13 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
   const days = Number(getParam(search, "days") || 0);
   const minScore = Number(getParam(search, "minScore") || 0);
   const sort = getParam(search, "sort") || "match";
-  const discoveredAfter = Number.isFinite(days) && days > 0
-    ? new Date(Date.now() - days * 86_400_000)
-    : undefined;
+  const discoveredAfter = discoveredSinceDays(days);
 
   const [companies, jobs] = await Promise.all([
     prisma.company.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
     prisma.job.findMany({
       where: {
-        ...(q
-          ? {
-              OR: [
-                { title: { contains: q, mode: "insensitive" } },
-                { company: { name: { contains: q, mode: "insensitive" } } },
-                { location: { contains: q, mode: "insensitive" } },
-              ],
-            }
-          : {}),
+        ...(q ? { OR: [{ title: { contains: q, mode: "insensitive" } }, { company: { name: { contains: q, mode: "insensitive" } } }, { location: { contains: q, mode: "insensitive" } }] } : {}),
         ...(status ? { status: status as "NEW" | "REVIEW" | "SHORTLISTED" | "REJECTED" | "CLOSED" } : {}),
         ...(source ? { source: source as "GREENHOUSE" | "LEVER" | "COMPANY_SITE" } : {}),
         ...(remote === "yes" ? { remote: true } : {}),
@@ -47,92 +38,28 @@ export default async function JobsPage({ searchParams }: { searchParams: Promise
         ...(Number.isFinite(minScore) && minScore > 0 ? { matchScore: { gte: minScore } } : {}),
       },
       include: { company: { select: { name: true } }, application: { select: { status: true } } },
-      orderBy:
-        sort === "newest"
-          ? [{ firstSeenAt: "desc" }]
-          : sort === "company"
-            ? [{ company: { name: "asc" } }, { matchScore: "desc" }]
-            : [{ matchScore: { sort: "desc", nulls: "last" } }, { firstSeenAt: "desc" }],
+      orderBy: sort === "newest" ? [{ firstSeenAt: "desc" }] : sort === "company" ? [{ company: { name: "asc" } }, { matchScore: "desc" }] : [{ matchScore: { sort: "desc", nulls: "last" } }, { firstSeenAt: "desc" }],
       take: 250,
     }),
   ]);
 
   return (
     <div className="stack-xl">
-      <section className="page-heading">
-        <div>
-          <span className="eyebrow accent">JOB EXPLORER</span>
-          <h1>Every opportunity, under control.</h1>
-          <p>Search, filter and move only the right vacancies into your application pipeline.</p>
-        </div>
-        <span className="count-chip">{jobs.length} results</span>
-      </section>
-
+      <section className="page-heading"><div><span className="eyebrow accent">JOB EXPLORER</span><h1>Every opportunity, under control.</h1><p>Search, filter and move only the right vacancies into your application pipeline.</p></div><span className="count-chip">{jobs.length} results</span></section>
       <form className="filter-bar" action="/jobs">
         <input className="field grow" name="q" defaultValue={q} placeholder="Search role, company or location" />
         <input className="field" name="skill" defaultValue={skill} placeholder="Matched skill" />
-        <select className="field" name="companyId" defaultValue={companyId}>
-          <option value="">All companies</option>
-          {companies.map((company) => <option value={company.id} key={company.id}>{company.name}</option>)}
-        </select>
-        <select className="field" name="status" defaultValue={status}>
-          <option value="">All statuses</option>
-          <option value="NEW">New</option>
-          <option value="REVIEW">Review</option>
-          <option value="SHORTLISTED">Shortlisted</option>
-          <option value="REJECTED">Rejected</option>
-          <option value="CLOSED">Closed</option>
-        </select>
-        <select className="field" name="source" defaultValue={source}>
-          <option value="">All sources</option>
-          <option value="GREENHOUSE">Greenhouse</option>
-          <option value="LEVER">Lever</option>
-          <option value="COMPANY_SITE">Company site</option>
-        </select>
-        <select className="field" name="remote" defaultValue={remote}>
-          <option value="">Any workplace</option>
-          <option value="yes">Remote-friendly</option>
-        </select>
-        <select className="field" name="days" defaultValue={String(days || "")}>
-          <option value="">Any discovery date</option>
-          <option value="1">Found today</option>
-          <option value="7">Last 7 days</option>
-          <option value="30">Last 30 days</option>
-        </select>
-        <select className="field" name="minScore" defaultValue={String(minScore || "")}>
-          <option value="">Any score</option>
-          <option value="65">65%+</option>
-          <option value="80">80%+</option>
-          <option value="90">90%+</option>
-        </select>
-        <select className="field" name="sort" defaultValue={sort}>
-          <option value="match">Best match</option>
-          <option value="newest">Newest</option>
-          <option value="company">Company</option>
-        </select>
-        <button className="button primary" type="submit">Filter</button>
-        <Link className="button ghost" href="/jobs">Clear</Link>
+        <select className="field" name="companyId" defaultValue={companyId}><option value="">All companies</option>{companies.map((company) => <option value={company.id} key={company.id}>{company.name}</option>)}</select>
+        <select className="field" name="status" defaultValue={status}><option value="">All statuses</option><option value="NEW">New</option><option value="REVIEW">Review</option><option value="SHORTLISTED">Shortlisted</option><option value="REJECTED">Rejected</option><option value="CLOSED">Closed</option></select>
+        <select className="field" name="source" defaultValue={source}><option value="">All sources</option><option value="GREENHOUSE">Greenhouse</option><option value="LEVER">Lever</option><option value="COMPANY_SITE">Company site</option></select>
+        <select className="field" name="remote" defaultValue={remote}><option value="">Any workplace</option><option value="yes">Remote-friendly</option></select>
+        <select className="field" name="days" defaultValue={String(days || "")}><option value="">Any discovery date</option><option value="1">Found today</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option></select>
+        <select className="field" name="minScore" defaultValue={String(minScore || "")}><option value="">Any score</option><option value="65">65%+</option><option value="80">80%+</option><option value="90">90%+</option></select>
+        <select className="field" name="sort" defaultValue={sort}><option value="match">Best match</option><option value="newest">Newest</option><option value="company">Company</option></select>
+        <button className="button primary" type="submit">Filter</button><Link className="button ghost" href="/jobs">Clear</Link>
       </form>
-
-      <div className="table-shell">
-        <div className="job-table header-row">
-          <span>Opportunity</span><span>Match</span><span>Location</span><span>Status</span><span>Source</span><span />
-        </div>
-        {jobs.map((job) => (
-          <div className="job-table" key={job.id}>
-            <div className="table-title">
-              <strong>{job.title}</strong>
-              <span>{job.company.name}</span>
-            </div>
-            <span className={`match-badge ${(job.matchScore ?? 0) >= 80 ? "high" : (job.matchScore ?? 0) >= 65 ? "mid" : "low"}`}>
-              {job.matchScore == null ? "—" : `${job.matchScore}%`}
-            </span>
-            <span className="muted">{job.remote ? "Remote-friendly" : job.location || "Not listed"}</span>
-            <span className="status-badge">{job.application?.status ?? job.status}</span>
-            <span className="muted">{job.source}</span>
-            <Link className="text-link" href={`/jobs/${job.id}`}>Open →</Link>
-          </div>
-        ))}
+      <div className="table-shell"><div className="job-table header-row"><span>Opportunity</span><span>Match</span><span>Location</span><span>Status</span><span>Source</span><span /></div>
+        {jobs.map((job) => <div className="job-table" key={job.id}><div className="table-title"><strong>{job.title}</strong><span>{job.company.name}</span></div><span className={`match-badge ${(job.matchScore ?? 0) >= 80 ? "high" : (job.matchScore ?? 0) >= 65 ? "mid" : "low"}`}>{job.matchScore == null ? "—" : `${job.matchScore}%`}</span><span className="muted">{job.remote ? "Remote-friendly" : job.location || "Not listed"}</span><span className="status-badge">{job.application?.status ?? job.status}</span><span className="muted">{job.source}</span><Link className="text-link" href={`/jobs/${job.id}`}>Open →</Link></div>)}
         {!jobs.length ? <div className="empty-state"><strong>No jobs match those filters.</strong><p>Clear a filter or run a fresh scrape.</p></div> : null}
       </div>
     </div>
