@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import { countBy, formatZAR, median, readSAInsight } from "@/jobs/market";
 
 export const dynamic = "force-dynamic";
 
@@ -6,7 +7,14 @@ export default async function AnalyticsPage() {
   const [jobs, applications, profile] = await Promise.all([
     prisma.job.findMany({
       where: { status: { not: "CLOSED" } },
-      select: { matchedSkills: true, missingSkills: true, remote: true, matchScore: true, company: { select: { name: true } } },
+      select: {
+        matchedSkills: true,
+        missingSkills: true,
+        remote: true,
+        matchScore: true,
+        matchData: true,
+        company: { select: { name: true } },
+      },
     }),
     prisma.jobApplication.findMany({ select: { status: true } }),
     prisma.candidateProfile.findFirst({ orderBy: { createdAt: "asc" }, select: { minimumScore: true } }),
@@ -23,9 +31,6 @@ export default async function AnalyticsPage() {
       skillCounts.set(skill, (skillCounts.get(skill) ?? 0) + 1);
     }
 
-    // Skill-gap advice is useful only when the vacancy is at least plausibly
-    // actionable. Do not tell the user to learn technology demanded mainly by
-    // jobs that scoring already considers a poor fit.
     if ((job.matchScore ?? 0) >= gapFloor) {
       for (const skill of job.missingSkills) {
         gapCounts.set(skill, (gapCounts.get(skill) ?? 0) + 1);
@@ -45,21 +50,86 @@ export default async function AnalyticsPage() {
   const maxSkill = Math.max(1, ...topSkills.map(([, count]) => count));
   const maxGap = Math.max(1, ...skillGaps.map(([, count]) => count));
 
+  const insights = jobs.map((job) => readSAInsight(job.matchData));
+  const saInsights = insights.filter((insight) => insight.sa?.country === "ZA");
+  const applyCount = insights.filter((insight) => insight.eligibility?.verdict === "APPLY").length;
+  const maybeCount = insights.filter((insight) => insight.eligibility?.verdict === "MAYBE").length;
+  const skipCount = insights.filter((insight) => insight.eligibility?.verdict === "SKIP").length;
+  const provinceCounts = countBy(saInsights.map((insight) => insight.sa?.province)).slice(0, 6);
+  const careerCounts = countBy(saInsights.map((insight) => insight.sa?.careerLevel).filter((value) => value && value !== "UNKNOWN")).slice(0, 6);
+  const salaryValues = saInsights.flatMap((insight) => {
+    const salary = insight.sa?.salary;
+    if (!salary) return [];
+    if (salary.minMonthly != null && salary.maxMonthly != null) return [Math.round((salary.minMonthly + salary.maxMonthly) / 2)];
+    if (salary.minMonthly != null) return [salary.minMonthly];
+    if (salary.maxMonthly != null) return [salary.maxMonthly];
+    return [];
+  });
+  const medianMonthlySalary = median(salaryValues);
+  const maxProvince = Math.max(1, ...provinceCounts.map(([, count]) => count));
+  const maxCareer = Math.max(1, ...careerCounts.map(([, count]) => count));
+
   return (
     <div className="stack-xl">
       <section className="page-heading">
         <div>
-          <span className="eyebrow accent">MARKET INTELLIGENCE</span>
-          <h1>Let the vacancies tell you what matters.</h1>
-          <p>See demand, skill gaps and your application conversion from the data Alchemy already collected.</p>
+          <span className="eyebrow accent">🇿🇦 SA MARKET INTELLIGENCE</span>
+          <h1>Let the South African market tell you where to move.</h1>
+          <p>Demand, fit, salary signals, provinces and application conversion from the vacancies Alchemy already collected.</p>
         </div>
       </section>
 
       <section className="metric-grid">
-        <Metric label="Open jobs" value={jobs.length} suffix="" />
+        <Metric label="SA vacancies" value={saInsights.length} suffix="" hint="Detected South African market" />
+        <Metric label="Apply now" value={applyCount} suffix="" hint="Alchemy verdict: APPLY" />
         <Metric label="Strong matches" value={strongCount} suffix="" hint={`Score ≥ ${threshold}%`} />
-        <Metric label="Remote-friendly" value={jobs.length ? Math.round((remoteCount / jobs.length) * 100) : 0} suffix="%" />
-        <Metric label="Applications tracked" value={applications.length} suffix="" />
+        <Metric label="Median salary" value={medianMonthlySalary == null ? "—" : formatZAR(medianMonthlySalary)} suffix={medianMonthlySalary == null ? "" : "/mo"} hint={`${salaryValues.length} disclosed salary signals`} />
+      </section>
+
+      <section className="analytics-grid">
+        <article className="panel">
+          <span className="eyebrow accent">SA OPPORTUNITY MAP</span>
+          <h2>Where the vacancies are</h2>
+          <p className="muted">Province signals detected from current South African roles.</p>
+          <div className="bar-list">
+            {provinceCounts.map(([province, count]) => <Bar key={province} label={province} count={count} max={maxProvince} />)}
+            {!provinceCounts.length ? <p className="muted">Run scoring to populate South African province intelligence.</p> : null}
+          </div>
+        </article>
+
+        <article className="panel">
+          <span className="eyebrow">CAREER LEVEL</span>
+          <h2>Where the market is hiring</h2>
+          <p className="muted">Graduate, junior, intermediate and senior signals from SA job copy.</p>
+          <div className="bar-list">
+            {careerCounts.map(([level, count]) => <Bar key={level} label={level} count={count} max={maxCareer} />)}
+            {!careerCounts.length ? <p className="muted">No career-level signals yet.</p> : null}
+          </div>
+        </article>
+      </section>
+
+      <section className="split-grid">
+        <article className="panel">
+          <span className="eyebrow accent">SHOULD I APPLY?</span>
+          <h2>Actionable verdicts</h2>
+          <div className="funnel-list">
+            <div className="funnel-row"><span>01</span><strong>APPLY</strong><b>{applyCount}</b></div>
+            <div className="funnel-row"><span>02</span><strong>MAYBE</strong><b>{maybeCount}</b></div>
+            <div className="funnel-row"><span>03</span><strong>SKIP</strong><b>{skipCount}</b></div>
+          </div>
+        </article>
+
+        <article className="panel">
+          <span className="eyebrow">APPLICATION FUNNEL</span>
+          <h2>From apply to offer</h2>
+          <div className="funnel-list">
+            {funnel.map(([stage, count], index) => (
+              <div className="funnel-row" key={stage}>
+                <span>{String(index + 1).padStart(2, "0")}</span><strong>{stage}</strong><b>{count}</b>
+              </div>
+            ))}
+          </div>
+        </article>
       </section>
 
       <section className="analytics-grid">
@@ -86,18 +156,6 @@ export default async function AnalyticsPage() {
 
       <section className="split-grid">
         <article className="panel">
-          <span className="eyebrow">APPLICATION FUNNEL</span>
-          <h2>From apply to offer</h2>
-          <div className="funnel-list">
-            {funnel.map(([stage, count], index) => (
-              <div className="funnel-row" key={stage}>
-                <span>{String(index + 1).padStart(2, "0")}</span><strong>{stage}</strong><b>{count}</b>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="panel">
           <span className="eyebrow">EMPLOYERS</span>
           <h2>Most active sources</h2>
           <div className="source-list">
@@ -106,12 +164,23 @@ export default async function AnalyticsPage() {
             ))}
           </div>
         </article>
+
+        <article className="panel">
+          <span className="eyebrow">WORK MODE</span>
+          <h2>Remote signal</h2>
+          <p className="muted">{jobs.length ? Math.round((remoteCount / jobs.length) * 100) : 0}% of the current dataset is remote-friendly.</p>
+          <div className="source-list">
+            <div className="source-row"><div><strong>Remote-friendly</strong><span>Current vacancies</span></div><b>{remoteCount}</b></div>
+            <div className="source-row"><div><strong>On-site / unspecified</strong><span>Current vacancies</span></div><b>{Math.max(0, jobs.length - remoteCount)}</b></div>
+            <div className="source-row"><div><strong>Applications tracked</strong><span>Current pipeline</span></div><b>{applications.length}</b></div>
+          </div>
+        </article>
       </section>
     </div>
   );
 }
 
-function Metric({ label, value, suffix, hint = "Current dataset" }: { label: string; value: number; suffix: string; hint?: string }) {
+function Metric({ label, value, suffix, hint = "Current dataset" }: { label: string; value: number | string; suffix: string; hint?: string }) {
   return <article className="metric-card"><span>{label}</span><strong>{value}{suffix}</strong><small>{hint}</small></article>;
 }
 
