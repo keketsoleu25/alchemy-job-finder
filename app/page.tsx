@@ -35,7 +35,7 @@ export default async function Home() {
     <div className="stack-xl">
       <section className="hero-panel">
         <div>
-          <span className="eyebrow accent">TODAY'S SEARCH</span>
+          <span className="eyebrow accent">TODAY&apos;S SEARCH</span>
           <h1>Find the jobs worth your energy.</h1>
           <p>Alchemy turns noisy vacancy feeds into a ranked shortlist you can act on.</p>
         </div>
