@@ -50,6 +50,14 @@ export default async function AnalyticsPage() {
   const maxSkill = Math.max(1, ...topSkills.map(([, count]) => count));
   const maxGap = Math.max(1, ...skillGaps.map(([, count]) => count));
 
+  const submitted = applications.filter((item) => !["PLANNED", "WITHDRAWN"].includes(item.status)).length;
+  const progressed = applications.filter((item) => ["SCREENING", "ASSESSMENT", "INTERVIEW", "OFFER"].includes(item.status)).length;
+  const interviewed = applications.filter((item) => ["INTERVIEW", "OFFER"].includes(item.status)).length;
+  const offers = applications.filter((item) => item.status === "OFFER").length;
+  const progressionRate = submitted ? Math.round((progressed / submitted) * 100) : 0;
+  const interviewRate = submitted ? Math.round((interviewed / submitted) * 100) : 0;
+  const offerRate = submitted ? Math.round((offers / submitted) * 100) : 0;
+
   const insights = jobs.map((job) => readSAInsight(job.matchData));
   const saInsights = insights.filter((insight) => insight.sa?.country === "ZA");
   const applyCount = insights.filter((insight) => insight.eligibility?.verdict === "APPLY").length;
@@ -73,9 +81,9 @@ export default async function AnalyticsPage() {
     <div className="stack-xl">
       <section className="page-heading">
         <div>
-          <span className="eyebrow accent">🇿🇦 SA MARKET INTELLIGENCE</span>
-          <h1>Let the South African market tell you where to move.</h1>
-          <p>Demand, fit, salary signals, provinces and application conversion from the vacancies Alchemy already collected.</p>
+          <span className="eyebrow accent">🇿🇦 SA MARKET + APPLICATION INTELLIGENCE</span>
+          <h1>Measure the market and your conversion through it.</h1>
+          <p>Demand, fit, salary signals and application conversion from the vacancies Alchemy already collected.</p>
         </div>
       </section>
 
@@ -84,6 +92,13 @@ export default async function AnalyticsPage() {
         <Metric label="Apply now" value={applyCount} suffix="" hint="Alchemy verdict: APPLY" />
         <Metric label="Strong matches" value={strongCount} suffix="" hint={`Score ≥ ${threshold}%`} />
         <Metric label="Median salary" value={medianMonthlySalary == null ? "—" : formatZAR(medianMonthlySalary)} suffix={medianMonthlySalary == null ? "" : "/mo"} hint={`${salaryValues.length} disclosed salary signals`} />
+      </section>
+
+      <section className="metric-grid">
+        <Metric label="Submitted" value={submitted} suffix="" hint="Entered the application funnel" />
+        <Metric label="Progression rate" value={progressionRate} suffix="%" hint="Reached screening or better" />
+        <Metric label="Interview rate" value={interviewRate} suffix="%" hint="Reached interview or offer" />
+        <Metric label="Offer rate" value={offerRate} suffix="%" hint="Offers / submitted" />
       </section>
 
       <section className="analytics-grid">
