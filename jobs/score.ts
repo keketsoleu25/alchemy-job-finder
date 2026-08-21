@@ -1,6 +1,7 @@
 import { evaluateHardFilters } from "./filters";
 import { extractExperienceRequirement } from "./experience";
 import { normalizeSAJob, evaluateSAEligibility, type SANormalizedJob, type SAEligibility } from "./sa";
+import { extractClosingDate } from "./sa-urgency";
 import { extractSkills, normalizeSkillName } from "./skills";
 
 export type MatchProfile = {
@@ -39,6 +40,7 @@ export type MatchScore = {
     cautions: string[];
     detectedSkills: string[];
     experienceText?: string;
+    closingDate?: string;
     sa: SANormalizedJob;
     eligibility: SAEligibility;
   };
@@ -60,10 +62,12 @@ export function scoreJob(job: MatchJob, profile: MatchProfile): MatchScore {
   const experience = extractExperienceRequirement(job.description);
   const filter = evaluateHardFilters(job, profile);
   const sa = normalizeSAJob(job);
+  const closingDate = extractClosingDate(job.description);
   const components: Record<string, number> = {};
   const positives: string[] = [];
   const cautions: string[] = [];
   const experienceMeta = experience.raw ? { experienceText: experience.raw } : {};
+  const closingMeta = closingDate ? { closingDate } : {};
 
   if (filter.rejected) {
     return {
@@ -88,6 +92,7 @@ export function scoreJob(job: MatchJob, profile: MatchProfile): MatchScore {
           reason: filter.reasons[0] ?? "A hard filter rejected this role.",
         },
         ...experienceMeta,
+        ...closingMeta,
       },
     };
   }
@@ -174,6 +179,7 @@ export function scoreJob(job: MatchJob, profile: MatchProfile): MatchScore {
 
   if (sa.country === "ZA") positives.push("South African market signal detected");
   if (sa.careerLevel !== "UNKNOWN") positives.push(`Career level: ${sa.careerLevel.toLowerCase()}`);
+  if (closingDate) positives.push("Application closing date detected");
   if (eligibility.preferredRequirements.length) cautions.push(...eligibility.preferredRequirements);
 
   return {
@@ -192,6 +198,7 @@ export function scoreJob(job: MatchJob, profile: MatchProfile): MatchScore {
       sa,
       eligibility,
       ...experienceMeta,
+      ...closingMeta,
     },
   };
 }
