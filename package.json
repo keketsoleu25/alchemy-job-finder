@@ -1,6 +1,6 @@
 {
   "name": "alchemy-job-finder",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
+    "check": "npm run typecheck && npm run lint && npm test",
     "scrape": "tsx workers/scrape-jobs.ts",
     "score": "tsx scripts/score-jobs.ts",
     "refresh": "npm run scrape && npm run score",
