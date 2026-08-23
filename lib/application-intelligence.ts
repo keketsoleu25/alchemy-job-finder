@@ -1,3 +1,6 @@
+// Application Intelligence converts passive application records into concrete actions.
+// Keep this module deterministic: the UI, tests and future automation should receive the
+// same answer for the same inputs without requiring an external AI service.
 export type ApplicationStatus =
   | "PLANNED"
   | "APPLIED"
@@ -31,10 +34,20 @@ export type FollowUpState = {
   reason: string;
 };
 
+export type NextApplicationAction = {
+  action: "PREPARE" | "APPLY_NOW" | "FOLLOW_UP" | "FOCUS_STAGE" | "WAIT" | "ARCHIVE";
+  urgency: "HIGH" | "MEDIUM" | "LOW";
+  reason: string;
+};
+
+// Date arithmetic is intentionally clamped at zero so clock drift/future timestamps never
+// produce confusing negative values in the application dashboard.
 function daysBetween(from: Date, to: Date): number {
   return Math.max(0, Math.floor((to.getTime() - from.getTime()) / 86_400_000));
 }
 
+// Readiness measures whether the candidate has enough context prepared to submit a deliberate,
+// tailored application rather than simply clicking Apply.
 export function getApplicationReadiness(input: ApplicationReadinessInput): ApplicationReadiness {
   const checklist = [
     { key: "fit", label: "Role fit checked", done: input.applyVerdict === "APPLY" || (input.matchScore ?? 0) >= 65 },
@@ -49,6 +62,8 @@ export function getApplicationReadiness(input: ApplicationReadinessInput): Appli
   return { score, label, checklist };
 }
 
+// Follow-up windows are conservative defaults: seven days after a plain application and five
+// days without movement once the candidate has entered an active recruitment stage.
 export function getFollowUpState(input: ApplicationReadinessInput, now = new Date()): FollowUpState {
   if (input.status === "REJECTED" || input.status === "WITHDRAWN" || input.status === "OFFER") {
     return { label: "CLOSED", daysSinceUpdate: daysBetween(input.updatedAt, now), reason: "Application is in a terminal stage." };
@@ -76,6 +91,32 @@ export function getFollowUpState(input: ApplicationReadinessInput, now = new Dat
   return { label: "WAIT", daysSinceUpdate: days, reason: "Still inside the normal follow-up window." };
 }
 
+// This is the human-readable decision layer. It deliberately sits above readiness/follow-up so
+// those lower-level rules remain reusable by analytics, notifications and future integrations.
+export function getNextApplicationAction(input: ApplicationReadinessInput, now = new Date()): NextApplicationAction {
+  const readiness = getApplicationReadiness(input);
+  const followUp = getFollowUpState(input, now);
+
+  if (followUp.label === "CLOSED") {
+    return { action: "ARCHIVE", urgency: "LOW", reason: "This application has reached a terminal stage." };
+  }
+  if (followUp.label === "FOLLOW_UP") {
+    return { action: "FOLLOW_UP", urgency: "HIGH", reason: followUp.reason };
+  }
+  if (followUp.label === "ACTIVE_STAGE") {
+    return { action: "FOCUS_STAGE", urgency: "HIGH", reason: `Prepare for the current ${input.status.toLowerCase()} stage.` };
+  }
+  if (input.status === "PLANNED" && readiness.label === "READY" && input.applyVerdict !== "SKIP") {
+    return { action: "APPLY_NOW", urgency: "HIGH", reason: "Application materials are ready and the role passed the fit check." };
+  }
+  if (input.status === "PLANNED") {
+    return { action: "PREPARE", urgency: readiness.score >= 50 ? "MEDIUM" : "LOW", reason: `${readiness.score}% of the application checklist is complete.` };
+  }
+  return { action: "WAIT", urgency: "LOW", reason: followUp.reason };
+}
+
+// Priority is a sortable operational score, not a probability of getting hired. Higher values
+// mean the record deserves attention sooner; terminal records are pushed to the bottom.
 export function applicationPriority(input: ApplicationReadinessInput): number {
   const readiness = getApplicationReadiness(input);
   const followUp = getFollowUpState(input);
