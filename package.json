@@ -14,9 +14,10 @@
     "refresh": "npm run scrape && npm run score",
     "seed:companies": "node --env-file-if-exists=.env.local --import tsx scripts/seed-companies.ts",
     "seed:sa": "node --env-file-if-exists=.env.local --import tsx scripts/seed-sa-sources.ts",
+    "seed:boards": "node --env-file-if-exists=.env.local --import tsx scripts/seed-job-boards.ts",
     "seed:profile": "node --env-file-if-exists=.env.local --import tsx scripts/seed-profile.ts",
     "verify:sa-sources": "node --env-file-if-exists=.env.local --import tsx scripts/verify-sa-sources.ts",
-    "hunt:sa": "npm run seed:sa && npm run verify:sa-sources && npm run refresh"
+    "hunt:sa": "npm run seed:sa && npm run seed:boards && npm run verify:sa-sources && npm run refresh"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
