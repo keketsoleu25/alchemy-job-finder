@@ -1,8 +1,8 @@
 import type { JobScraper, ScraperCompanyConfig, ScrapedJob } from "./types";
 
-import { ExecutivePlacementsScraper } from "./generic/executive-placements";
 import { GreenhouseScraper } from "./ats/greenhouse";
 import { LeverScraper } from "./ats/lever";
+import { ExecutivePlacementsScraper } from "./generic/executive-placements";
 import { StructuredHtmlScraper } from "./generic/structured-html";
 import { StaticJobBoardScraper } from "./job-boards/static-job-board";
 
@@ -33,33 +33,9 @@ class CustomSourceRouter implements JobScraper {
       host.endsWith("careerjunction.co.za") ||
       host.endsWith("careers24.com");
 
-    return isBoard
-      ? this.board.fetch(company)
-      : this.direct.fetch(company);
+    return isBoard ? this.board.fetch(company) : this.direct.fetch(company);
   }
 }
-
-export const scraperRegistry = new ScraperRegistry();
-
-scraperRegistry.register("GREENHOUSE", new GreenhouseScraper());
-scraperRegistry.register("LEVER", new LeverScraper());
-// CUSTOM stays dependency-free. Known public job boards are routed to their
-// collection adapter; direct employer pages keep the structured HTML fallback.
-scraperRegistry.register("CUSTOM", new CustomSourceRouter());
-
-import type { JobScraper, ScraperCompanyConfig, ScrapedJob } from "./types";
-
-import { GreenhouseScraper } from "./ats/greenhouse";
-import { LeverScraper } from "./ats/lever";
-import { ExecutivePlacementsScraper } from "./generic/executive-placements";
-import { StructuredHtmlScraper } from "./generic/structured-html";
-
-export type RegisteredScraperType =
-  | "GREENHOUSE"
-  | "LEVER"
-  | "CHEERIO"
-  | "PLAYWRIGHT"
-  | "CUSTOM";
 
 class ScraperRegistry {
   private readonly scrapers = new Map<RegisteredScraperType, JobScraper>();
@@ -79,25 +55,10 @@ class ScraperRegistry {
   }
 }
 
-class CompanySiteScraper implements JobScraper {
-  private readonly structuredHtml = new StructuredHtmlScraper();
-  private readonly executivePlacements = new ExecutivePlacementsScraper();
-
-  fetch(company: ScraperCompanyConfig): Promise<ScrapedJob[]> {
-    const hostname = new URL(company.careerUrl).hostname.toLowerCase();
-
-    if (hostname === "executiveplacements.com" || hostname === "www.executiveplacements.com") {
-      return this.executivePlacements.fetch(company);
-    }
-
-    return this.structuredHtml.fetch(company);
-  }
-}
-
 export const scraperRegistry = new ScraperRegistry();
 
 scraperRegistry.register("GREENHOUSE", new GreenhouseScraper());
 scraperRegistry.register("LEVER", new LeverScraper());
-// CUSTOM stays the lightweight company-site path. Known public job boards can
-// receive a focused adapter while ordinary employer sites keep the JSON-LD fallback.
-scraperRegistry.register("CUSTOM", new CompanySiteScraper());
+// CUSTOM stays dependency-free. Known public sources are routed to focused
+// adapters; ordinary employer pages keep the structured HTML fallback.
+scraperRegistry.register("CUSTOM", new CustomSourceRouter());
