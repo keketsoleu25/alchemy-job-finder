@@ -1,7 +1,8 @@
-import type { JobScraper } from "./types";
+import type { JobScraper, ScraperCompanyConfig, ScrapedJob } from "./types";
 
 import { GreenhouseScraper } from "./ats/greenhouse";
 import { LeverScraper } from "./ats/lever";
+import { ExecutivePlacementsScraper } from "./generic/executive-placements";
 import { StructuredHtmlScraper } from "./generic/structured-html";
 
 export type RegisteredScraperType =
@@ -29,10 +30,25 @@ class ScraperRegistry {
   }
 }
 
+class CompanySiteScraper implements JobScraper {
+  private readonly structuredHtml = new StructuredHtmlScraper();
+  private readonly executivePlacements = new ExecutivePlacementsScraper();
+
+  fetch(company: ScraperCompanyConfig): Promise<ScrapedJob[]> {
+    const hostname = new URL(company.careerUrl).hostname.toLowerCase();
+
+    if (hostname === "executiveplacements.com" || hostname === "www.executiveplacements.com") {
+      return this.executivePlacements.fetch(company);
+    }
+
+    return this.structuredHtml.fetch(company);
+  }
+}
+
 export const scraperRegistry = new ScraperRegistry();
 
 scraperRegistry.register("GREENHOUSE", new GreenhouseScraper());
 scraperRegistry.register("LEVER", new LeverScraper());
-// CUSTOM is the dependency-free static HTML/JSON-LD fallback. CHEERIO and
-// PLAYWRIGHT remain reserved for sites that truly require those heavier paths.
-scraperRegistry.register("CUSTOM", new StructuredHtmlScraper());
+// CUSTOM stays the lightweight company-site path. Known public job boards can
+// receive a focused adapter while ordinary employer sites keep the JSON-LD fallback.
+scraperRegistry.register("CUSTOM", new CompanySiteScraper());
