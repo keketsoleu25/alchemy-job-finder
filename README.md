@@ -136,3 +136,5 @@ Set `DATABASE_URL` in the deployment environment. The scheduled GitHub Actions w
 ## Intentional V1 boundary
 
 Playwright remains a last-resort adapter for career sites that require JavaScript execution. It is intentionally not activated until a real target employer proves the lighter API/structured-data paths are insufficient. No CAPTCHA bypass, proxy rotation, fingerprint spoofing or mass-application automation is part of this project.
+
+<!-- Vercel CI/CD verification -->
