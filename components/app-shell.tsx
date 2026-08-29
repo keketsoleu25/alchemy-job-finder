@@ -4,6 +4,7 @@ const nav = [
   ["/", "Overview"],
   ["/jobs", "Jobs"],
   ["/applications", "Applications"],
+  ["/interviews", "Interviews"],
   ["/companies", "Companies"],
   ["/analytics", "Analytics"],
   ["/settings", "Profile"],
@@ -32,8 +33,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <div className="sidebar-note">
           <span className="eyebrow">SYSTEM</span>
-          <strong>Direct-job intelligence</strong>
-          <p>Collect, rank and track the opportunities worth your time.</p>
+          <strong>SA job intelligence</strong>
+          <p>Discover, rank, apply, follow up and prepare for the opportunities worth your time.</p>
         </div>
       </aside>
 
