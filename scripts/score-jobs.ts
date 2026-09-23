@@ -3,7 +3,7 @@ import { scoreJob } from "../jobs/score";
 
 const BATCH_SIZE = 25;
 
-async function main() {
+export async function scoreJobs() {
   const profile = await prisma.candidateProfile.findFirst({ orderBy: { createdAt: "asc" } });
   if (!profile) {
     throw new Error("No CandidateProfile found. Run `npm run seed:profile` first.");
@@ -63,12 +63,3 @@ async function main() {
     console.log(`${String(job.matchScore ?? 0).padStart(3)}%  ${job.title} — ${job.company.name}`);
   }
 }
-
-main()
-  .catch((error) => {
-    console.error("Scoring failed:", error);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });

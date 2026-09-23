@@ -85,7 +85,7 @@ async function scrapeCompany(company: {
   }
 }
 
-async function main() {
+export async function scrapeJobs() {
   console.log("===============================");
   console.log("   ALCHEMY JOB FINDER");
   console.log("===============================");
@@ -135,12 +135,3 @@ async function main() {
     }
   }
 }
-
-main()
-  .catch((error) => {
-    console.error("Fatal worker error:", error);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });

@@ -131,7 +131,7 @@ Every successful sighting refreshes `lastSeenAt`. A vacancy is only marked `CLOS
 
 ## Deployment and scheduling
 
-Set `DATABASE_URL` in the deployment environment. The scheduled GitHub Actions workflow runs at 04:00, 10:00 and 16:00 UTC (06:00, 12:00 and 18:00 South Africa time) and requires a repository secret named `DATABASE_URL`. If the secret is absent, the workflow exits safely without scraping.
+Set `DATABASE_URL` in the deployment environment. Vercel Cron calls `/api/cron/refresh` daily at 04:00 UTC (06:00 South Africa time). Configure `DATABASE_URL` and `CRON_SECRET` for Production in Vercel. The endpoint rejects requests without the matching `Authorization: Bearer <CRON_SECRET>` header. Refresh output and failures appear in Vercel function logs. The `npm run refresh` command remains available for local use.
 
 ## Intentional V1 boundary
 
